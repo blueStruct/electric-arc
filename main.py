@@ -1,13 +1,9 @@
 #!/usr/bin/python3
 
-from threading import Thread
-from queue import Queue
-from enum import Enum
-import subprocess
-import os
-
 from curses import *
 from curses.ascii import isprint
+
+from lib import run
 
 
 PROMPT = '> '
@@ -16,17 +12,6 @@ PADDING_Y = 1
 PADDING_I = 1
 H_TEXT = 2
 H_INPUT = 1
-
-
-def sh(p):
-    subprocess.run(p, shell=True)
-
-
-def is_true(v):
-    if v in ('true', 'yes', 'y'):
-        return True
-    else:
-        return False
 
 
 def main(s):
@@ -62,13 +47,7 @@ def main(s):
         y_output = PADDING_Y + H_TEXT + H_INPUT + (PADDING_I*2+3)
 
 
-        ## define text
-        text = ['Hello World!', '']
-        status = 'downloading packages...'
-        output = []
-
-
-        ## handle input
+        ## handle input and call run function
         key = s.getch()
         if key == 9: # TAB disabled
             pass
@@ -82,9 +61,15 @@ def main(s):
 
         if commited_user_input in ('exit', 'quit', 'q'):
             break
-        elif commited_user_input == 'test':
+        else:
+            run(commited_user_input)
             commited_user_input = ''
-            sh('notify-send test')
+
+
+        ## define text
+        text = ['Hello World!', '']         # get from run function
+        status = 'downloading packages...'  # get from bg thread
+        output = []                         # get from bg thread
 
 
         ## do line wrapping on output
