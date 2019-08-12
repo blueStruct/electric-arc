@@ -1,0 +1,74 @@
+----------- arch linux ----------------------------
+
+install and config arch base
+  - run reflector before pacstrapping
+
+----------- packages ------------------------------
+
+/etc/makepkg.conf
+  - MAKEFLAGS="-j$(nproc)"
+install reflector
+run reflector
+install yay
+  - git clone aur.archlinux.org/yay.git
+  - cd yay
+  - makepkg -si
+install powerpill
+  - if exists, use /etc/powerpill/powerpill.json
+install non-aur packages with powerpill
+install aur-packages with yay
+
+---------- system-level configuration -------------
+
+copy system configs + systemd-units
+  - folder: etc-configs
+  - /etc/pacman.conf
+  - /etc/makepkg.conf
+  - /etc/asd.conf
+  - /etc/mdadm.conf
+  - /etc/powerpill/powerpill.json
+pacman cache
+  - sudo ln -s /var/lib/pacman/sync/*.db /var/cache/pacman/pkg
+  - my-arch-mirror.service
+  - systemctl --now enable my-arch-mirror
+sudo systemctl enable for all services
+  - asd.service
+  - raid-check.timer
+  - ufw.service
+  - pulseaudio.service
+network setup
+sudo ufw enable
+sudo ufw allow from 192.168.2.1/24
+sudo timedatectl set-ntp true
+copy crontab
+nvim config for root
+sudo nvim '+PlugUpdate' '+PlugClean!' '+PlugUpdate' '+qall'
+python ~/.local/share/nvim/plugged/youcompleteme/install.py --ts-completer --rust-completer
+  - nodejs, npm, rustup
+set environment variables
+
+---------- user-level configuration ---------------
+
+create user
+chsh -s /usr/bin/fish
+set environment variables
+install dotfiles (user config) with yadm
+run yadm bootstrap
+edit /etc/sudoers for asd
+  - markus ALL=(ALL) NOPASSWD: /usr/bin/psd-overlay-helper
+run modprobed-db once
+systemctl --user enable
+  - modprobed-db.service
+make symlinks in home
+font, gtk-theme and icons
+firefox configuration
+
+---------- rust development setup -----------------
+
+rustup toolchain install nightly
+rustup toolchain install stable
+default stable
+clippy
+rustfmt
+cargo install sccache
+set -Ux RUSTC_WRAPPER sccache
