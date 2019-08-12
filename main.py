@@ -2,10 +2,12 @@
 
 from curses import *
 from curses.ascii import isprint
+import subprocess
 
-from lib import run
+from lib import start_bg_thread, handle_input
 
 
+## constants
 PROMPT = '> '
 PADDING_X = 2
 PADDING_Y = 1
@@ -14,9 +16,46 @@ H_TEXT = 2
 H_INPUT = 1
 
 
-def main(s):
+class AppState:
+    fg_state = 'aur_helper'
+    bg_state = 'waiting'
+    password_mode = False
+
+    bg_thread = None
+    task_chan = None
+    status_chan = None
+    out_chan = None
+    pipe = None
+
+    user_input = ''
+    commited_user_input = ''
+
+    text = ('Hello World!',)
+    status_msg = ''
+    bg_output = ['test output']
+
+    def __init__(self):
+        (
+            self.bg_thread,
+            self.task_chan,
+            self.status_chan,
+            self.out_chan
+        ) = start_bg_thread()
+
+
+
+def sh(p):
+    subprocess.run(p, shell=True)
+
+
+def dbg(t):
+    with open('debug', mode='w') as f:
+        f.write(str(t))
+
+
+def main(screen):
     ## setup ncurses
-    s.nodelay(True)
+    screen.nodelay(True)
     use_default_colors()
     curs_set(0)
 
@@ -30,15 +69,12 @@ def main(s):
     red = color_pair(1)
     cyan = color_pair(2)
 
-    ## application state
-    user_input = ''
-    commited_user_input = ''
-    password_mode = False
+    state = AppState()
 
 
     while True:
         ## geometry and setup
-        h, b = s.getmaxyx()
+        h, b = screen.getmaxyx()
         b_sub = b - 2*PADDING_X
         b_input = b_sub - len(PROMPT)
 
@@ -48,82 +84,100 @@ def main(s):
 
 
         ## handle input and call run function
-        key = s.getch()
+        key = screen.getch()
         if key == 9: # TAB disabled
             pass
-        elif isprint(key) and len(user_input) < b_input: # printable keys
-            user_input += chr(key)
-        elif key in (KEY_ENTER, 10): # ENTER
-            commited_user_input = user_input
-            user_input = ''
-        elif key in (KEY_BACKSPACE, 127): # BACKSPACE
-            user_input = user_input[:-1]
+        elif isprint(key) and len(state.user_input) < b_input:
+            state.user_input += chr(key)
+        elif key in (KEY_ENTER, 10):
+            state.commited_user_input = state.user_input
+            state.user_input = ''
+        elif key in (KEY_BACKSPACE, 127):
+            state.user_input = state.user_input[:-1]
 
-        if commited_user_input in ('exit', 'quit', 'q'):
+        if state.commited_user_input in ('exit', 'quit', 'q'):
             break
         else:
-            run(commited_user_input)
-            commited_user_input = ''
+            (
+                state.text,
+                state.status_msg,
+                state.bg_output
+            ) = handle_input(
+                state.commited_user_input,
+                state.fg_state,
+                state.bg_state
+            )
+            state.commited_user_input = ''
 
 
-        ## define text
-        text = ['Hello World!', '']         # get from run function
-        status = 'downloading packages...'  # get from bg thread
-        output = []                         # get from bg thread
+        ## get status message from status channel
+        try:
+            state.status_msg = state.status_chan.get(block=False)
+        except Empty:
+            pass
 
 
-        ## do line wrapping on output
-        with open('lorem-ipsum') as f:
-            for line in f:
-                div, mod = divmod(len(line), b_sub)
-                for i in range(div+1):
-                    if i == div:
-                        output.append(line[(b_sub*i):(b_sub*i + mod)])
-                    else:
-                        output.append(line[(b_sub*i):(b_sub*(i+1))])
+        ## get output from out channel and do line wrapping
+        if state.pipe == None:
+            try:
+                state.pipe = state.out_chan.get(block=False)
+            except Empty:
+                pass
+        if state.pipe != None:
+            with open(state.pipe) as f:
+                for line in f:
+                    div, mod = divmod(len(line), b_sub)
+                    for i in range(div+1):
+                        if i == div:
+                            state.bg_output.append(line[(b_sub*i):(b_sub*i + mod)])
+                        else:
+                            state.bg_output.append(line[(b_sub*i):(b_sub*(i+1))])
+
+                state.bg_output = state.bg_output[-100:]
 
 
         ## window content
         # print text
-        s.attron(cyan)
-        if text[1] != '':
-            s.addnstr(PADDING_Y, PADDING_X, text[0], b_sub)
-            s.addnstr(PADDING_Y + 1, PADDING_X, text[1], b_sub)
+        screen.attron(cyan)
+        if len(state.text) == 2:
+            screen.addnstr(PADDING_Y, PADDING_X, state.text[0], b_sub)
+            screen.addnstr(PADDING_Y + 1, PADDING_X, state.text[1], b_sub)
         else:
-            s.redrawln(PADDING_Y, 1)
-            s.addnstr(PADDING_Y + 1, PADDING_X, text[0], b_sub)
-        s.attroff(cyan)
+            screen.redrawln(PADDING_Y, 1)
+            screen.addnstr(PADDING_Y + 1, PADDING_X, state.text[0], b_sub)
+        screen.attroff(cyan)
 
         # print prompt
-        s.attron(cyan)
-        s.addstr(y_input, PADDING_X, PROMPT)
-        s.attroff(cyan)
+        screen.attron(cyan)
+        screen.addstr(y_input, PADDING_X, PROMPT)
+        screen.attroff(cyan)
 
         # print user_input
-        s.attron(white)
+        screen.attron(white)
         for i in range(b_input):
-            s.delch(y_input, PADDING_X + len(PROMPT) + i)
-        if not password_mode:
-            s.addnstr(y_input, PADDING_X + len(PROMPT), user_input, b_input)
+            screen.delch(y_input, PADDING_X + len(PROMPT) + i)
+        if not state.password_mode:
+            screen.addnstr(y_input, PADDING_X + len(PROMPT), state.user_input, b_input)
         else:
-            for (i, _) in enumerate(user_input):
-                s.addch(y_input, PADDING_X + len(PROMPT) + i, '*')
-        s.attroff(white)
+            for (i, _) in enumerate(state.user_input):
+                screen.addch(y_input, PADDING_X + len(PROMPT) + i, '*')
+        screen.attroff(white)
 
         # print divider
-        s.attron(white)
+        screen.attron(white)
         for i in range(b_sub):
-            s.addch(PADDING_Y + H_TEXT + H_INPUT + PADDING_I, PADDING_X + i, '\u2500')
-        s.attroff(white)
+            screen.addch(PADDING_Y + H_TEXT + H_INPUT + PADDING_I, PADDING_X + i, '\u2500')
+        screen.attroff(white)
 
         # print status message
-        s.attron(cyan)
-        s.addnstr(PADDING_Y + H_TEXT + H_INPUT + 2*PADDING_I + 1, PADDING_X, status, b_sub)
-        s.attroff(cyan)
+        screen.attron(cyan)
+        screen.addnstr(PADDING_Y + H_TEXT + H_INPUT + 2*PADDING_I + 1, PADDING_X,
+                  state.status_msg, b_sub)
+        screen.attroff(cyan)
 
         # print output
-        for (i, line) in enumerate(output):
-            s.addnstr(y_output + i, PADDING_X, line, b_sub)
+        for (i, line) in enumerate(state.bg_output[-h_output:]):
+            screen.addnstr(y_output + i, PADDING_X, line, b_sub)
 
 
 wrapper(main)
