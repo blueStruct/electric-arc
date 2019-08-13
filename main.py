@@ -24,11 +24,11 @@ class AppState:
     password_mode = False
 
     bg_thread = None
-    task_chan = None
-    status_chan = None
-    out_chan = None
-    done_chan = None
-    pipe = None
+    task_chan = None        # submit tasks to bg-thread
+    status_chan = None      # submit current task back to ui
+    out_chan = None         # submit pipes of bg-thread to ui
+    done_chan = None        # tell ui that task done and to get new pipe
+    pipe = None             # current pipe to read bg-output from
     pipe_pos = 0
 
     user_input = ''
