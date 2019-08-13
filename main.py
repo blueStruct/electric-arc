@@ -126,8 +126,10 @@ def main(screen):
                 pass
         else:
             # TODO
-            state.bg_output.append(state.pipe[state.pipe_pos:])
-            state.pipe_pos = len(state.pipe)
+            if len(state.pipe) > state.pipe_pos:
+                state.bg_output.append(state.pipe[state.pipe_pos:])
+                state.pipe_pos = len(state.pipe)
+                state.bg_output = state.bg_output[-LINES_OUTPUT_HISTORY:]
 
             # for line in state.pipe:
             #     div, mod = divmod(len(line), b_sub)
@@ -136,9 +138,6 @@ def main(screen):
             #             state.bg_output.append(line[(b_sub*i):(b_sub*i + mod)])
             #         else:
             #             state.bg_output.append(line[(b_sub*i):(b_sub*(i+1))])
-
-
-            state.bg_output = state.bg_output[-LINES_OUTPUT_HISTORY:]
 
 
         ## window content
