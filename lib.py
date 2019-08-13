@@ -80,15 +80,19 @@ class ShellTask:
 
 
 ## helper functions
+def dbg(obj, filename='debug'):
+    with open(filename, mode='w') as f:
+        f.write(str(obj))
+
+def sh(cmd):
+    return subprocess.run(cmd, shell=True)
+
+
 def is_true(v):
     if v in ('true', 'yes', 'y'):
         return True
     else:
         return False
-
-
-def sh(cmd):
-    return subprocess.run(cmd, shell=True)
 
 
 def test_function(func):
@@ -101,6 +105,7 @@ def test_function(func):
         return func
 
 
+@test_function
 def check_installed(pack):
     if sh('pacman -Qq {} 2> /dev/null'.format(pack)).returncode:
         return True
@@ -120,23 +125,28 @@ def install_aur_helper(pack):
     ).format(pack))
 
 
+@test_function
 def install_pck(prog, pack):
     sh('{} --noconfirm --needed -S {}'.format(prog, pack))
     return 'installing {}...'.format(pack)
 
 
+@test_function
 def batch_install(prog, packages):
     sh('cat {} | {} --noconfirm --needed -S -'.format(packages, prog))
 
 
+@test_function
 def setup_system():
     pass #TODO
 
 
+@test_function
 def change_system_configs():
     pass #TODO
 
 
+@test_function
 def place_systemd_units():
     sh((
         'for i in custom-systemd-units/*;'
@@ -145,6 +155,7 @@ def place_systemd_units():
     ))
 
 
+@test_function
 def setup_lan_pacman_cache():
     msg('setting up LAN Pacman Cache')
     install_pck('powerpill', 'darkhttpd')
@@ -153,6 +164,7 @@ def setup_lan_pacman_cache():
     # in custom-systemd-units
 
 
+@test_function
 def enable_services():
     # systemd units provided by upstream
     if os.path.exists('services'):
@@ -171,42 +183,41 @@ def enable_services():
 
 
 ## run functions
-def run_bg_thread(task_chan, status_chan, out_chan):
+def run_bg_thread(task_chan, status_chan, out_chan, done_chan):
     while True:
         task = task_chan.get()
+
         if task is None:
             break
-        if type(task) == HelperTask:
+        elif type(task) == HelperTask:
             task.func(task.args)
             task_chan.task_done()
         elif type(task) == ShellTask:
             proc = subprocess.Popen(task.cmd, shell=True, stdout=subprocess.PIPE,
-                                    stderr=subprocess.STDOUT)
+                                    stderr=subprocess.STDOUT, text=True)
             pipe, _ = proc.communicate()
             out_chan.put(pipe)
             status_chan.put(task.status_msg)
             proc.wait()
             task_chan.task_done()
+            done_chan.put(True)
 
 
 def start_bg_thread():
     task_chan = Queue()
     status_chan = Queue()
     out_chan = Queue()
+    done_chan = Queue()
     bg_thread = Thread(target=run_bg_thread,
-                       args=(task_chan, status_chan, out_chan))
+                       args=(task_chan, status_chan, out_chan, done_chan))
+    bg_thread.start()
 
-    return bg_thread, task_chan, status_chan, out_chan
+    return bg_thread, task_chan, status_chan, out_chan, done_chan
 
 
-def handle_input(user_input, fg_state, bg_state):
-    if user_input == 'test':
-        sh('notify-send test')
-    # if fg_state == 'aur_helper':
-    #     bg_state = 'aur_helper'
+def handle_input(user_input, fg_state, task_chan):
+    if user_input != '':
+        task = ShellTask('echo {}'.format(user_input), 'outputting user input')
+        task_chan.put(task)
 
     return QUESTIONS[fg_state]
-
-
-
-

@@ -2,7 +2,9 @@
 
 from curses import *
 from curses.ascii import isprint
+from queue import Empty
 import subprocess
+import os
 
 from lib import start_bg_thread, handle_input
 
@@ -14,18 +16,20 @@ PADDING_Y = 1
 PADDING_I = 1
 H_TEXT = 2
 H_INPUT = 1
+LINES_OUTPUT_HISTORY = 100
 
 
 class AppState:
     fg_state = 'aur_helper'
-    bg_state = 'waiting'
     password_mode = False
 
     bg_thread = None
     task_chan = None
     status_chan = None
     out_chan = None
+    done_chan = None
     pipe = None
+    pipe_pos = 0
 
     user_input = ''
     commited_user_input = ''
@@ -39,18 +43,9 @@ class AppState:
             self.bg_thread,
             self.task_chan,
             self.status_chan,
-            self.out_chan
+            self.out_chan,
+            self.done_chan,
         ) = start_bg_thread()
-
-
-
-def sh(p):
-    subprocess.run(p, shell=True)
-
-
-def dbg(t):
-    with open('debug', mode='w') as f:
-        f.write(str(t))
 
 
 def main(screen):
@@ -96,44 +91,54 @@ def main(screen):
             state.user_input = state.user_input[:-1]
 
         if state.commited_user_input in ('exit', 'quit', 'q'):
+            state.status_msg = 'Exiting...'
+            state.task_chan.put(None)
+            state.bg_thread.join()
             break
         else:
-            (
-                state.text,
-                state.status_msg,
-                state.bg_output
-            ) = handle_input(
+            state.text = handle_input(
                 state.commited_user_input,
                 state.fg_state,
-                state.bg_state
+                state.task_chan,
             )
             state.commited_user_input = ''
 
 
         ## get status message from status channel
         try:
-            state.status_msg = state.status_chan.get(block=False)
+            state.status_msg = state.status_chan.get_nowait()
         except Empty:
             pass
 
 
         ## get output from out channel and do line wrapping
+        try:
+            if state.done_chan.get_nowait():
+                state.pipe = None
+        except Empty:
+            pass
+
         if state.pipe == None:
             try:
-                state.pipe = state.out_chan.get(block=False)
+                state.pipe = state.out_chan.get_nowait()
+                state.pipe_pos = 0
             except Empty:
                 pass
-        if state.pipe != None:
-            with open(state.pipe) as f:
-                for line in f:
-                    div, mod = divmod(len(line), b_sub)
-                    for i in range(div+1):
-                        if i == div:
-                            state.bg_output.append(line[(b_sub*i):(b_sub*i + mod)])
-                        else:
-                            state.bg_output.append(line[(b_sub*i):(b_sub*(i+1))])
+        else:
+            # TODO
+            state.bg_output.append(state.pipe[state.pipe_pos:])
+            state.pipe_pos = len(state.pipe)
 
-                state.bg_output = state.bg_output[-100:]
+            # for line in state.pipe:
+            #     div, mod = divmod(len(line), b_sub)
+            #     for i in range(div+1):
+            #         if i == div:
+            #             state.bg_output.append(line[(b_sub*i):(b_sub*i + mod)])
+            #         else:
+            #             state.bg_output.append(line[(b_sub*i):(b_sub*(i+1))])
+
+
+            state.bg_output = state.bg_output[-LINES_OUTPUT_HISTORY:]
 
 
         ## window content
