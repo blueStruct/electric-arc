@@ -19,6 +19,8 @@ H_INPUT = 1
 LINES_OUTPUT_HISTORY = 100
 
 Y_INPUT = PADDING_Y + H_TEXT
+Y_DIVIDER = PADDING_Y + H_TEXT + H_INPUT + PADDING_I
+Y_STATUS_MSG = PADDING_Y + H_TEXT + H_INPUT + 2*PADDING_I + 1
 Y_OUTPUT = PADDING_Y + H_TEXT + H_INPUT + (PADDING_I*2+3)
 
 
@@ -174,13 +176,12 @@ def main(screen):
         # print divider
         screen.attron(white)
         for i in range(b_sub):
-            screen.addch(PADDING_Y + H_TEXT + H_INPUT + PADDING_I, PADDING_X + i, '\u2500')
+            screen.addch(Y_DIVIDER, PADDING_X + i, '\u2500')
         screen.attroff(white)
 
         # print status message
         screen.attron(cyan)
-        screen.addnstr(PADDING_Y + H_TEXT + H_INPUT + 2*PADDING_I + 1, PADDING_X,
-                  state.status_msg, b_sub)
+        screen.addnstr(Y_STATUS_MSG, PADDING_X, state.status_msg, b_sub)
         screen.attroff(cyan)
 
         # print output
