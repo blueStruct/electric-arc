@@ -18,6 +18,9 @@ H_TEXT = 2
 H_INPUT = 1
 LINES_OUTPUT_HISTORY = 100
 
+Y_INPUT = PADDING_Y + H_TEXT
+Y_OUTPUT = PADDING_Y + H_TEXT + H_INPUT + (PADDING_I*2+3)
+
 
 class AppState:
     fg_state = 'aur_helper'
@@ -72,10 +75,7 @@ def main(screen):
         h, b = screen.getmaxyx()
         b_sub = b - 2*PADDING_X
         b_input = b_sub - len(PROMPT)
-
         h_output = h - H_TEXT - H_INPUT - (PADDING_I*2+3) - 2*PADDING_Y
-        y_input = PADDING_Y + H_TEXT
-        y_output = PADDING_Y + H_TEXT + H_INPUT + (PADDING_I*2+3)
 
 
         ## handle input and call run function
@@ -157,18 +157,18 @@ def main(screen):
 
         # print prompt
         screen.attron(cyan)
-        screen.addstr(y_input, PADDING_X, PROMPT)
+        screen.addstr(Y_INPUT, PADDING_X, PROMPT)
         screen.attroff(cyan)
 
         # print user_input
         screen.attron(white)
         for i in range(b_input):
-            screen.delch(y_input, PADDING_X + len(PROMPT) + i)
+            screen.delch(Y_INPUT, PADDING_X + len(PROMPT) + i)
         if not state.password_mode:
-            screen.addnstr(y_input, PADDING_X + len(PROMPT), state.user_input, b_input)
+            screen.addnstr(Y_INPUT, PADDING_X + len(PROMPT), state.user_input, b_input)
         else:
             for (i, _) in enumerate(state.user_input):
-                screen.addch(y_input, PADDING_X + len(PROMPT) + i, '*')
+                screen.addch(Y_INPUT, PADDING_X + len(PROMPT) + i, '*')
         screen.attroff(white)
 
         # print divider
@@ -185,7 +185,7 @@ def main(screen):
 
         # print output
         for (i, line) in enumerate(state.bg_output[-h_output:]):
-            screen.addnstr(y_output + i, PADDING_X, line, b_sub)
+            screen.addnstr(Y_OUTPUT + i, PADDING_X, line, b_sub)
 
 
 wrapper(main)
