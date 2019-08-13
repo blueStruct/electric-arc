@@ -103,7 +103,9 @@ def main(screen):
                 state.fg_state,
                 state.task_chan,
             )
-            state.commited_user_input = ''
+
+        # reset commited user input after handling it
+        state.commited_user_input = ''
 
 
         ## get status message from status channel
