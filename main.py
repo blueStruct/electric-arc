@@ -112,25 +112,29 @@ def main(screen):
 
 
         ## get output from out channel and do line wrapping
+        # remove old pipe when done
         try:
             if state.done_chan.get_nowait():
                 state.pipe = None
         except Empty:
             pass
 
+        # try to get new pipe if needed
         if state.pipe == None:
             try:
                 state.pipe = state.out_chan.get_nowait()
                 state.pipe_pos = 0
             except Empty:
                 pass
+        # get output from pipe, increase line counter
         else:
-            # TODO
             if len(state.pipe) > state.pipe_pos:
                 state.bg_output.append(state.pipe[state.pipe_pos:])
                 state.pipe_pos = len(state.pipe)
+                # remove superfluous lines from output buffer
                 state.bg_output = state.bg_output[-LINES_OUTPUT_HISTORY:]
 
+            # TODO
             # for line in state.pipe:
             #     div, mod = divmod(len(line), b_sub)
             #     for i in range(div+1):
