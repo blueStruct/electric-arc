@@ -169,14 +169,12 @@ def main(screen):
         if not state.password_mode:
             screen.addnstr(Y_INPUT, PADDING_X + len(PROMPT), state.user_input, b_input)
         else:
-            for (i, _) in enumerate(state.user_input):
-                screen.addch(Y_INPUT, PADDING_X + len(PROMPT) + i, '*')
+            screen.addstr(Y_INPUT, PADDING_X + len(PROMPT), '*' * len(state.user_input))
         screen.attroff(white)
 
         # print divider
         screen.attron(white)
-        for i in range(b_sub):
-            screen.addch(Y_DIVIDER, PADDING_X + i, '\u2500')
+        screen.addstr(Y_DIVIDER, PADDING_X, '\u2500' * b_sub)
         screen.attroff(white)
 
         # print status message
