@@ -1,7 +1,8 @@
 from threading import Thread
-from queue import Queue
+from queue import Queue, Empty
 import subprocess
 
+from time import sleep
 import os.path
 import os
 
@@ -80,12 +81,15 @@ class ShellTask:
 
 
 ## helper functions
+def sh(cmd):
+    return subprocess.run(cmd, shell=True)
+
 def dbg(obj, filename='debug'):
     with open(filename, mode='w') as f:
         f.write(str(obj))
 
-def sh(cmd):
-    return subprocess.run(cmd, shell=True)
+def notify(t: str):
+    sh('notify-send {}'.format(t))
 
 
 def is_true(v):
@@ -183,7 +187,7 @@ def enable_services():
 
 
 ## run functions
-def run_bg_thread(task_chan, status_chan, out_chan, done_chan):
+def run_bg_thread(task_chan, status_chan, out_chan, done_chan, kill_chan):
     while True:
         task = task_chan.get()
 
@@ -195,12 +199,29 @@ def run_bg_thread(task_chan, status_chan, out_chan, done_chan):
         elif type(task) == ShellTask:
             proc = subprocess.Popen(task.cmd, shell=True, stdout=subprocess.PIPE,
                                     stderr=subprocess.STDOUT, text=True)
+            status_chan.put(task.status_msg)
             pipe, _ = proc.communicate()
             out_chan.put(pipe)
-            status_chan.put(task.status_msg)
-            proc.wait()
-            task_chan.task_done()
+
+            while True:
+                # check if successfully finished
+                if proc.poll() is not None:
+                    break
+
+                # check for kill signal
+                try:
+                    if kill_chan.get_nowait():
+                        proc.kill()
+                        proc.wait()
+                        return
+                except Empty:
+                    pass
+
+                sleep(0.001)
+
             done_chan.put(True)
+
+        task_chan.task_done()
 
 
 def start_bg_thread():
@@ -208,15 +229,19 @@ def start_bg_thread():
     status_chan = Queue()
     out_chan = Queue()
     done_chan = Queue()
+    kill_chan = Queue()
     bg_thread = Thread(target=run_bg_thread,
-                       args=(task_chan, status_chan, out_chan, done_chan))
+                       args=(task_chan, status_chan, out_chan, done_chan, kill_chan))
     bg_thread.start()
 
-    return bg_thread, task_chan, status_chan, out_chan, done_chan
+    return bg_thread, task_chan, status_chan, out_chan, done_chan, kill_chan
 
 
 def handle_input(user_input, fg_state, task_chan):
-    if user_input != '':
+    if user_input == 'sleep':
+        task = ShellTask('sleep 10', 'sleeping for 10 secs...')
+        task_chan.put(task)
+    elif user_input != '':
         task = ShellTask('echo {}'.format(user_input), 'outputting user input')
         task_chan.put(task)
 

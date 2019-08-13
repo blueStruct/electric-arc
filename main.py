@@ -27,12 +27,14 @@ Y_OUTPUT = PADDING_Y + H_TEXT + H_INPUT + (PADDING_I*2+3)
 class AppState:
     fg_state = 'aur_helper'
     password_mode = False
+    exiting = False
 
     bg_thread = None
     task_chan = None        # submit tasks to bg-thread
-    status_chan = None      # submit current task back to ui
+    status_chan = None      # submit current status back to ui
     out_chan = None         # submit pipes of bg-thread to ui
     done_chan = None        # tell ui that task done and to get new pipe
+    kill_chan = None        # send kill signal to bg-thread
     pipe = None             # current pipe to read bg-output from
     pipe_pos = 0
 
@@ -50,6 +52,7 @@ class AppState:
             self.status_chan,
             self.out_chan,
             self.done_chan,
+            self.kill_chan,
         ) = start_bg_thread()
 
 
@@ -80,6 +83,11 @@ def main(screen):
         h_output = h - H_TEXT - H_INPUT - (PADDING_I*2+3) - 2*PADDING_Y
 
 
+        ## exit when requested and bg-thread is closed
+        if state.exiting and not state.bg_thread.is_alive():
+            break
+
+
         ## handle input and call run function
         key = screen.getch()
         if key == 9: # TAB disabled
@@ -92,12 +100,15 @@ def main(screen):
         elif key in (KEY_BACKSPACE, 127):
             state.user_input = state.user_input[:-1]
 
-        if state.commited_user_input in ('exit', 'quit', 'q'):
-            state.status_msg = 'Exiting...'
+        if state.commited_user_input in ('exit', 'quit'):
+            state.status_msg = 'Waiting for tasks to finish then exiting... (cancel for immediate exit)'
             state.task_chan.put(None)
-            state.bg_thread.join()
-            break
-        else:
+            state.exiting = True
+        elif state.commited_user_input in ('cancel', 'abort'):
+            state.task_chan.put(None)
+            state.kill_chan.put(True)
+            state.exiting = True
+        elif not state.exiting:
             state.text = handle_input(
                 state.commited_user_input,
                 state.fg_state,
