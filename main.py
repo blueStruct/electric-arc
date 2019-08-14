@@ -147,12 +147,15 @@ def main(screen):
             # only print anything if window big enough
             if h > MIN_H:
                 # print text
+                for i in range(b_sub):
+                    screen.delch(PADDING_Y, PADDING_X + i)
+                    screen.delch(PADDING_Y + 1, PADDING_X + i)
+
                 screen.attron(cyan)
                 if len(state.text) == 2:
                     screen.addnstr(PADDING_Y, PADDING_X, state.text[0], b_sub)
                     screen.addnstr(PADDING_Y + 1, PADDING_X, state.text[1], b_sub)
                 else:
-                    screen.redrawln(PADDING_Y, 1)
                     screen.addnstr(PADDING_Y + 1, PADDING_X, state.text[0], b_sub)
                 screen.attroff(cyan)
 
@@ -167,9 +170,10 @@ def main(screen):
                 b_input = b_sub - len(PROMPT)
 
                 # print user_input
-                screen.attron(white)
                 for i in range(b_input):
                     screen.delch(Y_INPUT, PADDING_X + len(PROMPT) + i)
+
+                screen.attron(white)
                 if not state.password_mode:
                     screen.addnstr(Y_INPUT, PADDING_X + len(PROMPT),
                                    state.user_input, b_input)
@@ -184,6 +188,8 @@ def main(screen):
                 screen.attroff(white)
 
                 # print status message
+                for i in range(b_sub):
+                    screen.delch(Y_STATUS_MSG, PADDING_X + i)
                 screen.attron(cyan)
                 screen.addnstr(Y_STATUS_MSG, PADDING_X, state.status_msg, b_sub)
                 screen.attroff(cyan)
