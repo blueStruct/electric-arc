@@ -90,7 +90,7 @@ def dbg(obj, filename='debug'):
         f.write(str(obj))
 
 def notify(t: str):
-    sh('notify-send {}'.format(t))
+    sh('notify-send "{}"'.format(t))
 
 
 def is_true(v):
@@ -190,13 +190,13 @@ def enable_services():
 ## run functions
 def run_bg_thread(task_chan, status_chan, out_chan, kill_chan):
     while True:
+        status_chan.put(STATUS_MSG['waiting'])
         task = task_chan.get()
 
         if task is None:
             break
         elif type(task) == HelperTask:
             task.func(task.args)
-            task_chan.task_done()
         elif type(task) == ShellTask:
             sh = pexpect.spawn("/usr/bin/sh -c '{}'".format(task.cmd), encoding='utf-8')
             status_chan.put(task.status_msg)
@@ -239,7 +239,7 @@ def handle_input(user_input, fg_state, task_chan):
         task = ShellTask('sleep 10', 'sleeping for 10 secs...')
         task_chan.put(task)
     elif user_input != '':
-        task = ShellTask('echo {}'.format(user_input), 'outputting user input')
+        task = ShellTask('echo {}'.format(user_input), '')
         task_chan.put(task)
 
     return QUESTIONS[fg_state]
