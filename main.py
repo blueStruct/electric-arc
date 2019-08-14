@@ -74,12 +74,12 @@ def main(screen):
     # mainloop, wrapped in try statement to catch keyboard interrupt
     try:
         while True:
-            ## exit when requested and bg-thread is closed ########################
+            ## exit when requested and bg-thread is closed #####################
             if state.exiting and not state.bg_thread.is_alive():
                 break
 
 
-            ## user input #########################################################
+            ## user input ######################################################
             # calculate b_input
             h, b = screen.getmaxyx()
             b_sub = b - 2*PADDING_X
@@ -124,22 +124,7 @@ def main(screen):
             state.commited_user_input = ''
 
 
-            ## rendering ##########################################################
-            # get status message from status channel
-            try:
-                state.status_msg = state.status_chan.get_nowait()
-            except Empty:
-                pass
-
-            # get new output line
-            try:
-                new_line = state.out_chan.get_nowait()
-                state.bg_output.append(new_line)
-                # remove old lines from output buffer
-                state.bg_output = state.bg_output[-LINES_OUTPUT_HISTORY:]
-            except Empty:
-                pass
-
+            ## rendering #######################################################
             # update window dimensions and b_sub
             h, b = screen.getmaxyx()
             b_sub = b - 2*PADDING_X
@@ -187,12 +172,27 @@ def main(screen):
                 screen.addstr(Y_DIVIDER, PADDING_X, '\u2500' * b_sub)
                 screen.attroff(white)
 
+                # get status message from status channel
+                try:
+                    state.status_msg = state.status_chan.get_nowait()
+                except Empty:
+                    pass
+
                 # print status message
                 for i in range(b_sub):
                     screen.delch(Y_STATUS_MSG, PADDING_X + i)
                 screen.attron(cyan)
                 screen.addnstr(Y_STATUS_MSG, PADDING_X, state.status_msg, b_sub)
                 screen.attroff(cyan)
+
+                # get new output line
+                try:
+                    new_line = state.out_chan.get_nowait()
+                    state.bg_output.append(new_line)
+                    # remove old lines from output buffer
+                    state.bg_output = state.bg_output[-LINES_OUTPUT_HISTORY:]
+                except Empty:
+                    pass
 
                 # update h_output
                 h, b = screen.getmaxyx()
