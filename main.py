@@ -9,7 +9,7 @@ import os
 from lib import start_bg_thread, handle_input
 
 
-## constants
+## constants ###################################################################
 PROMPT = '> '
 PADDING_X = 2
 PADDING_Y = 1
@@ -54,7 +54,7 @@ class AppState:
 
 
 def main(screen):
-    ## setup ncurses
+    ## setup ncurses ##########################################################
     screen.nodelay(True)
     use_default_colors()
     curs_set(0)

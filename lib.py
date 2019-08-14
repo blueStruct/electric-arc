@@ -8,6 +8,11 @@ import os.path
 import os
 
 
+TEST = True
+
+
+## strings ####################################################################
+
 QUESTIONS = {
     'aur_helper': (
         'Which AUR-helper do you want to use?',
@@ -59,10 +64,7 @@ STATUS_MSG = {
 }
 
 
-TEST = True
-
-
-## types of tasks
+## types of tasks #############################################################
 class HelperTask:
     func = None
     args = ()
@@ -81,7 +83,7 @@ class ShellTask:
         self.status_msg = s
 
 
-## helper functions
+## helper functions ###########################################################
 def sh(cmd):
     return subprocess.run(cmd, shell=True)
 
@@ -187,7 +189,7 @@ def enable_services():
     ))
 
 
-## run functions
+## important functions ########################################################
 def run_bg_thread(task_chan, status_chan, out_chan, kill_chan):
     while True:
         status_chan.put(STATUS_MSG['waiting'])
@@ -198,7 +200,8 @@ def run_bg_thread(task_chan, status_chan, out_chan, kill_chan):
         elif type(task) == HelperTask:
             task.func(task.args)
         elif type(task) == ShellTask:
-            sh = pexpect.spawn("/usr/bin/sh -c '{}'".format(task.cmd), encoding='utf-8')
+            sh = pexpect.spawn("/usr/bin/sh -c '{}'".format(task.cmd),
+                               encoding='utf-8')
             sh.timeout = 1/1000
             status_chan.put(task.status_msg)
 
@@ -206,7 +209,7 @@ def run_bg_thread(task_chan, status_chan, out_chan, kill_chan):
                 # send out new lines with channel
                 try:
                     sh.expect('\r\n')
-                    out_chan.put(sh.before + '\n')
+                    out_chan.put(sh.before)
                 # task finished
                 except pexpect.EOF:
                     break
