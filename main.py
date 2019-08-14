@@ -39,9 +39,9 @@ class AppState:
     user_input = ''
     commited_user_input = ''
 
-    text = ('Hello World!',)
+    text = ('',)
     status_msg = ''
-    bg_output = ['test output']
+    bg_output = []
 
     def __init__(self):
         (

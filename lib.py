@@ -8,7 +8,7 @@ import os.path
 import os
 
 
-TEST = True
+DRY_RUN = True
 
 
 ## strings ####################################################################
@@ -102,17 +102,17 @@ def is_true(v):
         return False
 
 
-def test_function(func):
+def dry_run(func):
     def disabled():
         pass
 
-    if TEST == True:
+    if DRY_RUN == True:
         return disabled
     else:
         return func
 
 
-@test_function
+@dry_run
 def check_installed(pack):
     if sh('pacman -Qq {} 2> /dev/null'.format(pack)).returncode:
         return True
@@ -121,7 +121,7 @@ def check_installed(pack):
 
 
 #TODO can't run makepkg as root
-@test_function
+@dry_run
 def install_aur_helper(pack):
     sh((
         'cd /tmp;'
@@ -132,28 +132,28 @@ def install_aur_helper(pack):
     ).format(pack))
 
 
-@test_function
+@dry_run
 def install_pck(prog, pack):
     sh('{} --noconfirm --needed -S {}'.format(prog, pack))
     return 'installing {}...'.format(pack)
 
 
-@test_function
+@dry_run
 def batch_install(prog, packages):
     sh('cat {} | {} --noconfirm --needed -S -'.format(packages, prog))
 
 
-@test_function
+@dry_run
 def setup_system():
     pass #TODO
 
 
-@test_function
+@dry_run
 def change_system_configs():
     pass #TODO
 
 
-@test_function
+@dry_run
 def place_systemd_units():
     sh((
         'for i in custom-systemd-units/*;'
@@ -162,7 +162,7 @@ def place_systemd_units():
     ))
 
 
-@test_function
+@dry_run
 def setup_lan_pacman_cache():
     msg('setting up LAN Pacman Cache')
     install_pck('powerpill', 'darkhttpd')
@@ -171,7 +171,7 @@ def setup_lan_pacman_cache():
     # in custom-systemd-units
 
 
-@test_function
+@dry_run
 def enable_services():
     # systemd units provided by upstream
     if os.path.exists('services'):
