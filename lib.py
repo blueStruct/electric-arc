@@ -1,6 +1,7 @@
 from threading import Thread
 from queue import Queue, Empty
 import subprocess
+import pexpect
 
 from time import sleep
 import os.path
@@ -187,7 +188,7 @@ def enable_services():
 
 
 ## run functions
-def run_bg_thread(task_chan, status_chan, out_chan, done_chan, kill_chan):
+def run_bg_thread(task_chan, status_chan, out_chan, kill_chan):
     while True:
         task = task_chan.get()
 
@@ -197,29 +198,26 @@ def run_bg_thread(task_chan, status_chan, out_chan, done_chan, kill_chan):
             task.func(task.args)
             task_chan.task_done()
         elif type(task) == ShellTask:
-            proc = subprocess.Popen(task.cmd, shell=True, stdout=subprocess.PIPE,
-                                    stderr=subprocess.STDOUT, text=True)
+            sh = pexpect.spawn("/usr/bin/sh -c '{}'".format(task.cmd), encoding='utf-8')
             status_chan.put(task.status_msg)
-            pipe, _ = proc.communicate()
-            out_chan.put(pipe)
 
             while True:
-                # check if successfully finished
-                if proc.poll() is not None:
+                # send out new lines with channel
+                try:
+                    sh.expect('\r\n')
+                    out_chan.put(sh.before + '\n')
+                # task finished
+                except pexpect.EOF:
                     break
-
-                # check for kill signal
+                # check for kill signal and react
                 try:
                     if kill_chan.get_nowait():
-                        proc.kill()
-                        proc.wait()
+                        sh.sendcontrol('c')
                         return
                 except Empty:
                     pass
 
-                sleep(0.001)
-
-            done_chan.put(True)
+                sleep(10/1000)
 
         task_chan.task_done()
 
@@ -228,13 +226,12 @@ def start_bg_thread():
     task_chan = Queue()
     status_chan = Queue()
     out_chan = Queue()
-    done_chan = Queue()
     kill_chan = Queue()
     bg_thread = Thread(target=run_bg_thread,
-                       args=(task_chan, status_chan, out_chan, done_chan, kill_chan))
+                       args=(task_chan, status_chan, out_chan, kill_chan))
     bg_thread.start()
 
-    return bg_thread, task_chan, status_chan, out_chan, done_chan, kill_chan
+    return bg_thread, task_chan, status_chan, out_chan, kill_chan
 
 
 def handle_input(user_input, fg_state, task_chan):

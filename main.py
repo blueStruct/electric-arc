@@ -32,11 +32,8 @@ class AppState:
     bg_thread = None
     task_chan = None        # submit tasks to bg-thread
     status_chan = None      # submit current status back to ui
-    out_chan = None         # submit pipes of bg-thread to ui
-    done_chan = None        # tell ui that task done and to get new pipe
+    out_chan = None         # submit output lines from bg-thread to ui
     kill_chan = None        # send kill signal to bg-thread
-    pipe = None             # current pipe to read bg-output from
-    pipe_pos = 0
 
     user_input = ''
     commited_user_input = ''
@@ -51,7 +48,6 @@ class AppState:
             self.task_chan,
             self.status_chan,
             self.out_chan,
-            self.done_chan,
             self.kill_chan,
         ) = start_bg_thread()
 
@@ -127,36 +123,24 @@ def main(screen):
 
 
         ## get output from out channel and do line wrapping
-        # remove old pipe when done
+        # get new output line
         try:
-            if state.done_chan.get_nowait():
-                state.pipe = None
+            new_line = state.out_chan.get_nowait()
+            state.bg_output.append(new_line)
         except Empty:
             pass
 
-        # try to get new pipe if needed
-        if state.pipe == None:
-            try:
-                state.pipe = state.out_chan.get_nowait()
-                state.pipe_pos = 0
-            except Empty:
-                pass
-        # get output from pipe, increase line counter
-        else:
-            if len(state.pipe) > state.pipe_pos:
-                state.bg_output.append(state.pipe[state.pipe_pos:])
-                state.pipe_pos = len(state.pipe)
-                # remove superfluous lines from output buffer
-                state.bg_output = state.bg_output[-LINES_OUTPUT_HISTORY:]
+        # remove superfluous lines from output buffer
+        state.bg_output = state.bg_output[-LINES_OUTPUT_HISTORY:]
 
-            # TODO
-            # for line in state.pipe:
-            #     div, mod = divmod(len(line), b_sub)
-            #     for i in range(div+1):
-            #         if i == div:
-            #             state.bg_output.append(line[(b_sub*i):(b_sub*i + mod)])
-            #         else:
-            #             state.bg_output.append(line[(b_sub*i):(b_sub*(i+1))])
+        # TODO
+        # for line in state.pipe:
+        #     div, mod = divmod(len(line), b_sub)
+        #     for i in range(div+1):
+        #         if i == div:
+        #             state.bg_output.append(line[(b_sub*i):(b_sub*i + mod)])
+        #         else:
+        #             state.bg_output.append(line[(b_sub*i):(b_sub*(i+1))])
 
 
         ## window content
