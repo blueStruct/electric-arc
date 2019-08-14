@@ -72,38 +72,45 @@ def main(screen):
 
 
     while True:
-        ## geometry and setup
-        h, b = screen.getmaxyx()
-        b_sub = b - 2*PADDING_X
-        b_input = b_sub - len(PROMPT)
-        h_output = h - H_TEXT - H_INPUT - (PADDING_I*2+3) - 2*PADDING_Y
-
-
-        ## exit when requested and bg-thread is closed
+        ## exit when requested and bg-thread is closed ########################
         if state.exiting and not state.bg_thread.is_alive():
             break
 
 
-        ## handle input and call run function
+        ## user input #########################################################
+        # calculate b_input
+        h, b = screen.getmaxyx()
+        b_sub = b - 2*PADDING_X
+        b_input = b_sub - len(PROMPT)
+
+        # get keys
         key = screen.getch()
-        if key == 9: # TAB disabled
+        # Tab disabled
+        if key == 9:
             pass
+        # add printable characters to user_input
         elif isprint(key) and len(state.user_input) < b_input:
             state.user_input += chr(key)
+        # Backspace
+        elif key in (KEY_BACKSPACE, 127):
+            state.user_input = state.user_input[:-1]
+        # Enter: commit user input
         elif key in (KEY_ENTER, 10):
             state.commited_user_input = state.user_input
             state.user_input = ''
-        elif key in (KEY_BACKSPACE, 127):
-            state.user_input = state.user_input[:-1]
 
+        # exit
         if state.commited_user_input in ('exit', 'quit'):
-            state.status_msg = 'Waiting for tasks to finish then exiting... (cancel for immediate exit)'
+            state.status_msg = ('Waiting for tasks to finish then exiting...'
+                                ' (cancel for immediate exit)')
             state.task_chan.put(None)
             state.exiting = True
+        # cancel
         elif state.commited_user_input in ('cancel', 'abort'):
             state.task_chan.put(None)
             state.kill_chan.put(True)
             state.exiting = True
+        # normal user input, disabled when exiting
         elif not state.exiting:
             state.text = handle_input(
                 state.commited_user_input,
@@ -115,35 +122,26 @@ def main(screen):
         state.commited_user_input = ''
 
 
-        ## get status message from status channel
+        ## rendering ##########################################################
+        # get status message from status channel
         try:
             state.status_msg = state.status_chan.get_nowait()
         except Empty:
             pass
 
-
-        ## get output from out channel and do line wrapping
         # get new output line
         try:
             new_line = state.out_chan.get_nowait()
             state.bg_output.append(new_line)
+            # remove old lines from output buffer
+            state.bg_output = state.bg_output[-LINES_OUTPUT_HISTORY:]
         except Empty:
             pass
 
-        # remove superfluous lines from output buffer
-        state.bg_output = state.bg_output[-LINES_OUTPUT_HISTORY:]
+        # update b_sub
+        h, b = screen.getmaxyx()
+        b_sub = b - 2*PADDING_X
 
-        # TODO
-        # for line in state.pipe:
-        #     div, mod = divmod(len(line), b_sub)
-        #     for i in range(div+1):
-        #         if i == div:
-        #             state.bg_output.append(line[(b_sub*i):(b_sub*i + mod)])
-        #         else:
-        #             state.bg_output.append(line[(b_sub*i):(b_sub*(i+1))])
-
-
-        ## window content
         # print text
         screen.attron(cyan)
         if len(state.text) == 2:
@@ -164,9 +162,11 @@ def main(screen):
         for i in range(b_input):
             screen.delch(Y_INPUT, PADDING_X + len(PROMPT) + i)
         if not state.password_mode:
-            screen.addnstr(Y_INPUT, PADDING_X + len(PROMPT), state.user_input, b_input)
+            screen.addnstr(Y_INPUT, PADDING_X + len(PROMPT),
+                           state.user_input, b_input)
         else:
-            screen.addstr(Y_INPUT, PADDING_X + len(PROMPT), '*' * len(state.user_input))
+            screen.addstr(Y_INPUT, PADDING_X + len(PROMPT),
+                          '*' * len(state.user_input))
         screen.attroff(white)
 
         # print divider
@@ -178,6 +178,10 @@ def main(screen):
         screen.attron(cyan)
         screen.addnstr(Y_STATUS_MSG, PADDING_X, state.status_msg, b_sub)
         screen.attroff(cyan)
+
+        # update h_output
+        h, b = screen.getmaxyx()
+        h_output = h - H_TEXT - H_INPUT - (PADDING_I*2+3) - 2*PADDING_Y
 
         # print output
         for (i, line) in enumerate(state.bg_output[-h_output:]):
