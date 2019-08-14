@@ -199,8 +199,10 @@ def main(screen):
                 h_output = h - H_TEXT - H_INPUT - (PADDING_I*2+3) - 2*PADDING_Y
 
                 # print output
-                for (i, line) in enumerate(state.bg_output[-h_output:]):
-                    screen.addnstr(Y_OUTPUT + i, PADDING_X, line, b_sub)
+                for (y, line) in enumerate(state.bg_output[-h_output:]):
+                    for x in range(b_sub):
+                        screen.delch(Y_OUTPUT + y, PADDING_X + x)
+                    screen.addnstr(Y_OUTPUT + y, PADDING_X, line, b_sub)
             else:
                 pass
 
