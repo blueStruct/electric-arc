@@ -16,6 +16,7 @@ PADDING_Y = 1
 PADDING_I = 1
 H_TEXT = 2
 H_INPUT = 1
+MIN_H = H_TEXT + H_INPUT + 6
 LINES_OUTPUT_HISTORY = 100
 
 Y_INPUT = PADDING_Y + H_TEXT
@@ -138,54 +139,63 @@ def main(screen):
         except Empty:
             pass
 
-        # update b_sub
+        # update window dimensions and b_sub
         h, b = screen.getmaxyx()
         b_sub = b - 2*PADDING_X
 
-        # print text
-        screen.attron(cyan)
-        if len(state.text) == 2:
-            screen.addnstr(PADDING_Y, PADDING_X, state.text[0], b_sub)
-            screen.addnstr(PADDING_Y + 1, PADDING_X, state.text[1], b_sub)
+        # only print anything if window big enough
+        if h > MIN_H:
+            # print text
+            screen.attron(cyan)
+            if len(state.text) == 2:
+                screen.addnstr(PADDING_Y, PADDING_X, state.text[0], b_sub)
+                screen.addnstr(PADDING_Y + 1, PADDING_X, state.text[1], b_sub)
+            else:
+                screen.redrawln(PADDING_Y, 1)
+                screen.addnstr(PADDING_Y + 1, PADDING_X, state.text[0], b_sub)
+            screen.attroff(cyan)
+
+            # print prompt
+            screen.attron(cyan)
+            screen.addstr(Y_INPUT, PADDING_X, PROMPT)
+            screen.attroff(cyan)
+
+            # update window dimensions, b_sub and b_input
+            h, b = screen.getmaxyx()
+            b_sub = b - 2*PADDING_X
+            b_input = b_sub - len(PROMPT)
+
+            # print user_input
+            screen.attron(white)
+            for i in range(b_input):
+                screen.delch(Y_INPUT, PADDING_X + len(PROMPT) + i)
+            if not state.password_mode:
+                screen.addnstr(Y_INPUT, PADDING_X + len(PROMPT),
+                               state.user_input, b_input)
+            else:
+                screen.addstr(Y_INPUT, PADDING_X + len(PROMPT),
+                              '*' * len(state.user_input))
+            screen.attroff(white)
+
+            # print divider
+            screen.attron(white)
+            screen.addstr(Y_DIVIDER, PADDING_X, '\u2500' * b_sub)
+            screen.attroff(white)
+
+            # print status message
+            screen.attron(cyan)
+            screen.addnstr(Y_STATUS_MSG, PADDING_X, state.status_msg, b_sub)
+            screen.attroff(cyan)
+
+            # update h_output
+            h, b = screen.getmaxyx()
+            h_output = h - H_TEXT - H_INPUT - (PADDING_I*2+3) - 2*PADDING_Y
+
+            # print output
+            for (i, line) in enumerate(state.bg_output[-h_output:]):
+                screen.addnstr(Y_OUTPUT + i, PADDING_X, line, b_sub)
         else:
-            screen.redrawln(PADDING_Y, 1)
-            screen.addnstr(PADDING_Y + 1, PADDING_X, state.text[0], b_sub)
-        screen.attroff(cyan)
-
-        # print prompt
-        screen.attron(cyan)
-        screen.addstr(Y_INPUT, PADDING_X, PROMPT)
-        screen.attroff(cyan)
-
-        # print user_input
-        screen.attron(white)
-        for i in range(b_input):
-            screen.delch(Y_INPUT, PADDING_X + len(PROMPT) + i)
-        if not state.password_mode:
-            screen.addnstr(Y_INPUT, PADDING_X + len(PROMPT),
-                           state.user_input, b_input)
-        else:
-            screen.addstr(Y_INPUT, PADDING_X + len(PROMPT),
-                          '*' * len(state.user_input))
-        screen.attroff(white)
-
-        # print divider
-        screen.attron(white)
-        screen.addstr(Y_DIVIDER, PADDING_X, '\u2500' * b_sub)
-        screen.attroff(white)
-
-        # print status message
-        screen.attron(cyan)
-        screen.addnstr(Y_STATUS_MSG, PADDING_X, state.status_msg, b_sub)
-        screen.attroff(cyan)
-
-        # update h_output
-        h, b = screen.getmaxyx()
-        h_output = h - H_TEXT - H_INPUT - (PADDING_I*2+3) - 2*PADDING_Y
-
-        # print output
-        for (i, line) in enumerate(state.bg_output[-h_output:]):
-            screen.addnstr(Y_OUTPUT + i, PADDING_X, line, b_sub)
+            pass
 
 
 wrapper(main)
