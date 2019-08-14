@@ -199,6 +199,7 @@ def run_bg_thread(task_chan, status_chan, out_chan, kill_chan):
             task.func(task.args)
         elif type(task) == ShellTask:
             sh = pexpect.spawn("/usr/bin/sh -c '{}'".format(task.cmd), encoding='utf-8')
+            sh.timeout = 1/1000
             status_chan.put(task.status_msg)
 
             while True:
@@ -209,10 +210,14 @@ def run_bg_thread(task_chan, status_chan, out_chan, kill_chan):
                 # task finished
                 except pexpect.EOF:
                     break
+                # no new lines, so carry on
+                except pexpect.TIMEOUT:
+                    pass
                 # check for kill signal and react
                 try:
                     if kill_chan.get_nowait():
-                        sh.sendcontrol('c')
+                        sh.terminate(force=True)
+                        sh.wait()
                         return
                 except Empty:
                     pass
