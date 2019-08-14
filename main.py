@@ -174,7 +174,9 @@ def main(screen):
 
                 # get status message from status channel
                 try:
-                    state.status_msg = state.status_chan.get_nowait()
+                    msg = state.status_chan.get_nowait()
+                    if msg != '':
+                        state.status_msg = msg
                 except Empty:
                     pass
 
