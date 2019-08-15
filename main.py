@@ -60,15 +60,12 @@ def main(screen):
     use_default_colors()
     curs_set(0)
 
-    init_color(COLOR_RED, 1000, 0, 0)    # redefine red
-    init_color(COLOR_CYAN, 0, 900, 1000) # redefine cyan
-
     init_pair(1, COLOR_RED, -1)
-    init_pair(2, COLOR_CYAN, -1)
+    init_pair(2, COLOR_BLUE, -1)
 
     white = color_pair(0)
     red = color_pair(1)
-    cyan = color_pair(2)
+    blue_and_bold = color_pair(2) | A_BOLD
 
     state = AppState()
 
@@ -142,18 +139,18 @@ def main(screen):
                     screen.delch(PADDING_Y, PADDING_X + i)
                     screen.delch(PADDING_Y + 1, PADDING_X + i)
 
-                screen.attron(cyan)
+                screen.attron(blue_and_bold)
                 if len(state.text) == 2:
                     screen.addnstr(PADDING_Y, PADDING_X, state.text[0], b_sub)
                     screen.addnstr(PADDING_Y + 1, PADDING_X, state.text[1], b_sub)
                 else:
                     screen.addnstr(PADDING_Y + 1, PADDING_X, state.text[0], b_sub)
-                screen.attroff(cyan)
+                screen.attroff(blue_and_bold)
 
                 # print prompt
-                screen.attron(cyan)
+                screen.attron(blue_and_bold)
                 screen.addstr(Y_INPUT, PADDING_X, PROMPT)
-                screen.attroff(cyan)
+                screen.attroff(blue_and_bold)
 
                 # update window dimensions, b_sub and b_input
                 h, b = screen.getmaxyx()
@@ -189,9 +186,9 @@ def main(screen):
                 # print status message
                 for i in range(b_sub):
                     screen.delch(Y_STATUS_MSG, PADDING_X + i)
-                screen.attron(cyan)
+                screen.attron(blue_and_bold)
                 screen.addnstr(Y_STATUS_MSG, PADDING_X, state.status_msg, b_sub)
-                screen.attroff(cyan)
+                screen.attroff(blue_and_bold)
 
                 # get new output line
                 try:
