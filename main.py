@@ -115,7 +115,7 @@ def main(screen):
                 state.exiting = True
             # normal user input, disabled when exiting
             elif not state.exiting:
-                state.text = handle_input(
+                state.text = handle_input(  # this function in lib.py contains the actual logic
                     state.fg_state,
                     state.answers,
                     state.commited_user_input,
