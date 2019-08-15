@@ -38,7 +38,7 @@ class AppState:
     kill_chan = None        # send kill signal to bg-thread
 
     user_input = ''
-    commited_user_input = ''
+    commited_user_input = None
 
     text = ('',)
     status_msg = ''
@@ -115,7 +115,11 @@ def main(screen):
                 state.exiting = True
             # normal user input, disabled when exiting
             elif not state.exiting:
-                state.text = handle_input(  # this function in lib.py contains the actual logic
+                (
+                    state.text,
+                    state.fg_state,
+                    state.answers,
+                ) = handle_input(  # this function in lib.py contains the actual logic
                     state.fg_state,
                     state.answers,
                     state.commited_user_input,
@@ -123,7 +127,7 @@ def main(screen):
                 )
 
             # reset commited user input after handling it
-            state.commited_user_input = ''
+            state.commited_user_input = None
 
 
             ## rendering #######################################################
