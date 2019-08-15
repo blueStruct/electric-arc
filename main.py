@@ -27,6 +27,7 @@ Y_OUTPUT = PADDING_Y + H_TEXT + H_INPUT + (PADDING_I*2+3)
 
 class AppState:
     fg_state = 'aur_helper'
+    answers = {}
     password_mode = False
     exiting = False
 
@@ -115,8 +116,9 @@ def main(screen):
             # normal user input, disabled when exiting
             elif not state.exiting:
                 state.text = handle_input(
-                    state.commited_user_input,
                     state.fg_state,
+                    state.answers,
+                    state.commited_user_input,
                     state.task_chan,
                 )
 
