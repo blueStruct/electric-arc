@@ -28,7 +28,6 @@ Y_OUTPUT = PADDING_Y + H_TEXT + H_INPUT + (PADDING_I*2+3)
 class AppState:
     fg_state = 'aur_helper'
     answers = {}
-    password_mode = False
     exiting = False
 
     bg_thread = None
@@ -162,12 +161,12 @@ def main(screen):
                     screen.delch(Y_INPUT, PADDING_X + len(PROMPT) + i)
 
                 screen.attron(white)
-                if not state.password_mode:
-                    screen.addnstr(Y_INPUT, PADDING_X + len(PROMPT),
-                                   state.user_input, b_input)
-                else:
+                if state.fg_state in ('pw', 'pw_again') and state.answers['hide_pw']:
                     screen.addstr(Y_INPUT, PADDING_X + len(PROMPT),
                                   '*' * len(state.user_input))
+                else:
+                    screen.addnstr(Y_INPUT, PADDING_X + len(PROMPT),
+                                   state.user_input, b_input)
                 screen.attroff(white)
 
                 # print divider
